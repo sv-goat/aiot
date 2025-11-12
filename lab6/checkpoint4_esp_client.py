@@ -12,7 +12,7 @@ import socket
 wifi = network.WLAN(network.STA_IF)  
 wifi.active(True)
 print("📡 Pulling up to WiFi… hold up")
-wifi.connect('SpectrumSetup-F9', 'albumisland341')
+wifi.connect('Columbia University', '')
 
 # wait until it's actually locked in
 while not wifi.isconnected():
@@ -536,6 +536,28 @@ def vm_har_predict():
         return "HAR prediction failed"
 
 
+def save_data_to_vm():
+    '''
+    Capture HAR data and send it to the VM endpoint for saving.
+    '''
+    sensor_data = get_har_data()
+    # Reshape to (3, 128) as nested list - Flask will convert to numpy
+    sensor_array = [
+        sensor_data["acc_x"],
+        sensor_data["acc_y"],
+        sensor_data["acc_z"]
+    ]
+    vm_url = "http://35.229.130.144:5000/data"
+    try:
+        response = requests.post(vm_url, json={"data": sensor_array}, timeout=35)
+        if response.status_code == 200:
+            return "Data saved to VM"
+        else:
+            return f"Failed to save data: {response.status_code}"
+    except Exception as e:
+        print("VM data save failed:", e)
+        return "Data save failed"
+
 COMMANDS = {
     "screen_on":        (screen_on,        0),
     "screen_off":       (screen_off,       0),
@@ -546,6 +568,7 @@ COMMANDS = {
     "display_weather":  (display_weather,  0),
     "get_har_data":     (get_har_data,     0),
     "vm_har_predict":   (vm_har_predict,   0),
+    "save_data_to_vm":  (save_data_to_vm, 0),
 }
 # --------------- LAB 6 HAR FUNCTION
 

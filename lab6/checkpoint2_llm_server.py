@@ -38,7 +38,7 @@ POE_API_KEY = "sEIxZsHJyHVpSZh3WjCzOGqnitGyaGXzoUz_Ls2oJ64"
 
 # ==== ESP32 / HAR helpers (from checkpoint 2, lightly adapted) ====
 
-ESP_IP = "192.168.1.154"   # <-- set your device IP here (or load from env)
+ESP_IP = "10.206.214.106"   # <-- set your device IP here (or load from env)
 
 def call_esp32(esp_ip, function_name, args=[]):
     import requests, json
@@ -84,7 +84,7 @@ async def classify_har_flow(esp_ip, get_llm_response):
         "Explain your reasoning step by step, then give only the activity "
         "label as the final answer (e.g., '...Final Answer: WALKING')."
     )
-    prompt = format_esp32_prompt(sensor_data, "Wrist", cot_question)
+    prompt = format_esp32_prompt(sensor_data, "palm", cot_question)
 
     # 3) ask LLM
     llm_response = await get_llm_response(prompt)

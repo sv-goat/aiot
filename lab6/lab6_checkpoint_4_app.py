@@ -10,7 +10,8 @@ TEST_CASES = [
     ("display_text", ["6 7"]),
     # ("set_alarm", ["11", "31"]),
     # ("display_location", []),
-    ("vm_har_predict", []),
+    ('vm_har_predict', []),
+    # ("save_data_to_vm", []),
     # ("display_weather", []),
     ("screen_off", [])
 ]
@@ -23,7 +24,7 @@ def do_post(host, port, payload, timeout=35):
 
 
 def main():
-    host = "192.168.1.154"
+    host = "10.206.214.106"
     port = 80
     delay = 5
 
