@@ -33,6 +33,8 @@ print("Listening on", addr)
 print("Hit me at: ", wifi.ifconfig()[0])
 
 def handle_request(conn):
+    global state_display_time
+    state_display_time = False
     try:
         req = b""
         # Keep reading until headers are done
@@ -415,17 +417,50 @@ def screen_on():
     return "Screen ON"
 
 def screen_off():
-    global SCREEN_ENABLED
+    global SCREEN_ENABLED, state_display_time
+    state_display_time = False
     SCREEN_ENABLED = False
     oled.fill(0)
     oled.show()
     return "Screen OFF"
 
+'''
+def display_time(duration_sec=None):
+    if not SCREEN_ENABLED:
+        return "Screen is off"
+
+    start_ms = time.ticks_ms()
+    while state_display_time:
+        # Stop after a duration if provided
+        if duration_sec is not None:
+            if time.ticks_diff(time.ticks_ms(), start_ms) > duration_sec * 1000:
+                break
+
+        # Read RTC: (year, month, day, weekday, hour, min, sec, subsecs)
+        y, m, d, wd, hh, mm, ss, sub = rtc.datetime()
+        time_str = f"{hh:02d}:{mm:02d}:{ss:02d}"
+
+        # Draw
+        oled.fill(0)
+        oled.text("Time:", 5, 5)
+        oled.text(time_str, 5, 16)
+        oled.show()
+
+        # Sleep to roughly align to 1s ticks
+        time.sleep(1)
+    return "Stopped live clock"
+'''
+
 def display_time():
-    if not SCREEN_ENABLED: return "Screen is off"
-    now = rtc.datetime()
-    time_str = f"{now[4]:02d}:{now[5]:02d}:{now[6]:02d}"
-    display_multiline_text("Time:", time_str)
+    global state_display_time
+    
+    if not SCREEN_ENABLED: 
+        return "Screen is off" 
+
+    state_display_time = True
+    now = rtc.datetime() 
+    time_str = f"{now[4]:02d}:{now[5]:02d}:{now[6]:02d}" 
+    display_multiline_text("Time:", time_str) 
     return f"Displayed time: {time_str}"
 
 def display_message(message):
@@ -469,6 +504,7 @@ COMMANDS = {
 
 # Put this near your globals after you construct `oled`
 SCREEN_ENABLED = True
+state_display_time = False
 
 # --- Simple OLED display (no wrapping) ---
 def display_multiline_text(header, body):
@@ -481,10 +517,21 @@ def display_multiline_text(header, body):
         return "Screen is off"
 
     oled.fill(0)
-    oled.text(str(header)[:16], 0, 0)
-    lines = str(body).split("\n")[:3]   # up to 3 more lines
+    # Cap the length of the line to 16 and then wrap them below
+    body_str = str(body)
+    indu_lines = body_str.split("\n")
+    res = []
+    for line in indu_lines:
+        if len(line) > 15:
+            # Break into chunks of 15
+            for i in range(0, len(line), 15):
+                res.append(line[i:i+15])
+        else:
+            res.append(line)
+    # Just three lines
+    lines = res[:3]
     for i, line in enumerate(lines):
-        oled.text(line[:16], 0, (i + 1) * 8)
+        oled.text(line, 3, 3 + (i + 1) * 8)
     oled.show()
     return "OK"
 
@@ -492,17 +539,24 @@ def display_multiline_text(header, body):
 # LLM SERVER IMPLEMENTATION
 
 
-
 # MAIN LOOP 
 def main_loop():
-    global addr, created_socket
+    global addr, created_socket, state_display_time
     # initialize the important registers to their default values first
     initialize_adxl345()
     clear_display()
     print("Starting clock with alarm feature...")
-
+    created_socket.settimeout(0.5)   # 0.5s polling interval
     while True:
-        conn, addr = created_socket.accept()
+        if check_alarm(rtc.datetime()):
+            trigger_alarm_visual_audio()
+        if state_display_time:
+            display_time()
+        try:
+            conn, addr = created_socket.accept()
+        except OSError as e:
+            # Timeout occurred, just continue the loop
+            continue
         handle_request(conn)
 
 # Attach IRQs
